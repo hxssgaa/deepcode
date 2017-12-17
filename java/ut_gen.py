@@ -348,12 +348,7 @@ def main():
     if not start_package_dirs or not proj_dir or not target_dir:
         logging.error('Analyse Java packages or project dir or target UT directory is empty')
         sys.exit(-1)
-    ut_gen(start_package_dirs, proj_dir, target_dir, lambda x: 'WdkCartService' in x or
-                                                               'WdkCartConfirmService' in x or
-                                                               'WDKCartFuseService' in x or
-                                                               'WdkCartHgService' in x or
-                                                               'WdkCartReadService' in x or
-                                                               'WdkCartWriteService' in x)
+    ut_gen(start_package_dirs, proj_dir, target_dir, None)
 
 
 if __name__ == '__main__':
