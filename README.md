@@ -17,9 +17,11 @@ state of the method, and using more specific parameters to auto unit test the Ja
 
 ### Usage:
 (1) tracer.py
+
 For Java dependency generation:
 tracer.py [analyze classes directory] [project directory]
 
 (2) ut_gen.py
+
 For Java automatically writing unit testing:
 ut_gen.py [classes directory which needs unit testing] [project directory] [target directory]
