@@ -85,13 +85,7 @@ def main():
     if not start_package_dirs or not proj_dir:
         logging.error('Analyse Java packages or project dir is empty')
         sys.exit(-1)
-    trace(start_package_dirs, proj_dir,
-          filter_classes_func=lambda x: 'WdkCartService' in x or
-                                        'WdkCartConfirmService' in x or
-                                        'WDKCartFuseService' in x or
-                                        'WdkCartHgService' in x or
-                                        'WdkCartReadService' in x or
-                                        'WdkCartWriteService' in x)
+    trace(start_package_dirs, proj_dir, None)
 
 
 if __name__ == '__main__':

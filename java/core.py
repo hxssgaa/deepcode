@@ -153,8 +153,8 @@ def _complete_generics_package(s, package, class_package_map):
     if '<' in generics_class_type and '>' in generics_class_type:
         left = generics_class_type.index('<')
         right = generics_class_type.index('>')
-        center = generics_class_type[left:right+1].replace(',', GENERICS_COMMA_PLACE_HOLDER)
-        generics_class_type = generics_class_type[:left] + center + generics_class_type[right+1:]
+        center = generics_class_type[left:right + 1].replace(',', GENERICS_COMMA_PLACE_HOLDER)
+        generics_class_type = generics_class_type[:left] + center + generics_class_type[right + 1:]
     generics_class_type.replace(',', GENERICS_COMMA_PLACE_HOLDER)
     base_class_type = _complete_generics_package(base_class_type, package, class_package_map)
     generics_class_type = ','.join(
@@ -162,12 +162,6 @@ def _complete_generics_package(s, package, class_package_map):
                                                  class_package_map), generics_class_type.split(','))
     )
     return '%s<%s>' % (base_class_type, generics_class_type)
-
-    # s = GENERICS_REGEX.sub(lambda x: x.group(0).replace(x.group(1), '%s.%s' % (
-    #     class_package_map[x.group(1)], x.group(1)) if x.group(1) in class_package_map else x.group(1)), s)
-    # return GENERICS_REGEX.sub(lambda x: '%s.%s' %
-    #                                     (class_package_map[clear_generics(x.group(0))], x.group(0)
-    #                                      ) if clear_generics(x.group(0)) in class_package_map else x.group(0), s)
 
 
 def _parse_method_line(line, class_package_map, package, class_type):
