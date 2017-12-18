@@ -127,7 +127,16 @@ def _is_method_name(s):
 def clear_generics(s):
     if not s or '<' not in s:
         return s
-    return s[:s.index('<')]
+    left = 0
+    res = []
+    for e in s:
+        if e == '<':
+            left += 1
+        elif e == '>':
+            left -= 1
+        if left == 0 and e != '>':
+            res.append(e)
+    return ''.join(res)
 
 
 def _clear_quotes(s):
@@ -309,7 +318,19 @@ def _format_code_lines_helper(lines):
                 bracket_s = ''
             else:
                 res.append(e)
-    res = filter(lambda x: x.strip(), res)
+    lines = filter(lambda x: x.strip(), res)
+    res = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if index < len(lines) - 1:
+            next_line = lines[index + 1]
+            if line.endswith('[') or (next_line.startswith('.') and not line.endswith(';')):
+                res.append(line + next_line)
+                index += 2
+                continue
+        res.append(line)
+        index += 1
     return res
 
 
@@ -566,14 +587,20 @@ def _find_vars_and_methods(line, line_spt, entity):
             res[line_spt[i]] = {
                 'class_type': '?',
             }
-            end = [j for j, x in enumerate(separated[i + 1:]) if ')' in x]
+            left_bracket = 1
+            end = None
+            for j, x in enumerate(separated[i + 1:]):
+                left_bracket += x.count('(')
+                left_bracket -= x.count(')')
+                if ')' in x and left_bracket == 0:
+                    end = j
             param_count = 0
-            if end:
+            if end is not None:
                 left_bracket = 0
-                for e in separated[i + 1: end[0] + i + 1]:
-                    left_bracket += e == '('
-                    left_bracket -= e == ')'
-                    if ',' == e and left_bracket == 0:
+                for e in separated[i + 1: end + i + 1]:
+                    left_bracket += e.count('(')
+                    left_bracket -= e.count(')')
+                    if ',' in e and left_bracket == 0:
                         param_count += 1
                 param_count += 1
 
@@ -597,7 +624,7 @@ def _setup_entity_method_dep_by_method(entity, method):
     external_vars = {}
     self_methods = set()
     for line in raw_body:
-        line = _clear_quotes(clear_generics(line)).replace('this.', '')
+        line = clear_generics(_clear_quotes(line)).replace('this.', '')
         for e in '.+-*/,^!&|<>%':
             line = e.join(map(str.strip, line.split(e)))
         line_spt = filter(lambda x: x, re.split(METHOD_LINE_SPLIT_REGEX, line))

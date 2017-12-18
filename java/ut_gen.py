@@ -171,6 +171,7 @@ def _build_mock_param_code(param_index, param_tup, class_map):
 def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_methods):
     if not entity or not ut_import_map or not ut_class_name or not public_methods:
         return []
+    ut_import_map = ut_import_map.copy()
     ut_package = entity.package
     package_code = ['package %s;' % ut_package, '']
 
@@ -220,12 +221,24 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
         )
         if public_method.throws:
             method_signature += ' throws %s' % ','.join(public_method.throws)
-        external_vars = public_method.method_body[
-            'external_vars'] if 'external_vars' in public_method.method_body else []
-        external_vars = {k: v for k, v in external_vars.items() if 'class_type' in v and v['class_type'] != '?'}
-        external_invoke_methods_map = {k: _get_non_void_invoke_methods(v['class_type'], v['invoke_methods'], class_map)
-                                       for k, v in external_vars.items() if 'invoke_methods' in v
-                                       and v['invoke_methods']}
+        # external_vars = public_method.method_body[
+        #     'external_vars'] if 'external_vars' in public_method.method_body else []
+        # external_vars = {k: v for k, v in external_vars.items() if 'class_type' in v and v['class_type'] != '?'}
+        external_invoke_methods_map = {}
+        for dep_info in (public_method.dep_info if 'dep_info' in public_method.__dict__ else []):
+            if 'class_type' not in dep_info or dep_info['class_type'] == '?':
+                continue
+            class_type = dep_info['class_type']
+            if class_type not in mocked_fields_name_map:
+                continue
+            k = mocked_fields_name_map[class_type]
+            v = _get_non_void_invoke_methods(class_type, dep_info['invoke_methods'], class_map)
+            if not v:
+                continue
+            external_invoke_methods_map[k] = v
+            # {k: _get_non_void_invoke_methods(v['class_type'], v['invoke_methods'], class_map)
+            #                            for k, v in external_vars.items() if 'invoke_methods' in v
+            #                            and v['invoke_methods']}
         method_signature += ' {'
         main_code += ['\t@SuppressWarnings("unchecked")']
         main_code += [method_signature]
