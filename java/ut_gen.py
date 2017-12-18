@@ -12,6 +12,7 @@ DEFAULT_UT_IMPORT_MAP = {
     'Collection': 'java.util',
     'Map': 'java.util',
     'Set': 'java.util',
+    'Date': 'java.util',
     'Assert': 'org.junit',
     'Test': 'org.junit',
     'RunWith': 'org.junit.runner',
@@ -221,6 +222,8 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
         )
         if public_method.throws:
             method_signature += ' throws %s' % ','.join(public_method.throws)
+        else:
+            method_signature += ' throws Exception'
         # external_vars = public_method.method_body[
         #     'external_vars'] if 'external_vars' in public_method.method_body else []
         # external_vars = {k: v for k, v in external_vars.items() if 'class_type' in v and v['class_type'] != '?'}
@@ -317,6 +320,8 @@ def _ut_gen_build(entity, class_map, impl_map, target_dir, interface_methods=Non
         public_methods = filter(lambda x: _get_unique_method_key(x) in unique_method_keys, public_methods)
         if len(public_methods) != len(unique_method_keys):
             logging.error('entity(%s) public methods doesn\'t match its interfaces' % entity.name)
+    else:
+        public_methods = []
     for method in public_methods:
         _setup_method_deps(entity, method)
     res = _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_methods)
