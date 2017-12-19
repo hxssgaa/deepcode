@@ -325,7 +325,7 @@ def _format_code_lines_helper(lines):
         line = lines[index]
         if index < len(lines) - 1:
             next_line = lines[index + 1]
-            if line.endswith('[') or (next_line.startswith('.') and not line.endswith(';')):
+            if line.endswith('[') or line.endswith(',') or (next_line.startswith('.') and not line.endswith(';')):
                 res.append(line + next_line)
                 index += 2
                 continue
