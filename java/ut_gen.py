@@ -238,10 +238,10 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
             v = _get_non_void_invoke_methods(class_type, dep_info['invoke_methods'], class_map)
             if not v:
                 continue
-            external_invoke_methods_map[k] = v
-            # {k: _get_non_void_invoke_methods(v['class_type'], v['invoke_methods'], class_map)
-            #                            for k, v in external_vars.items() if 'invoke_methods' in v
-            #                            and v['invoke_methods']}
+            if k in external_invoke_methods_map:
+                external_invoke_methods_map[k] |= v
+            else:
+                external_invoke_methods_map[k] = v
         method_signature += ' {'
         main_code += ['\t@SuppressWarnings("unchecked")']
         main_code += [method_signature]

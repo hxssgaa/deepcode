@@ -592,14 +592,19 @@ def _find_vars_and_methods(line, line_spt, entity):
             for j, x in enumerate(separated[i + 1:]):
                 left_bracket += x.count('(')
                 left_bracket -= x.count(')')
+                left_bracket += x.count('{')
+                left_bracket -= x.count('}')
                 if ')' in x and left_bracket == 0:
                     end = j
+                    break
             param_count = 0
             if end is not None:
                 left_bracket = 0
                 for e in separated[i + 1: end + i + 1]:
                     left_bracket += e.count('(')
                     left_bracket -= e.count(')')
+                    left_bracket += e.count('{')
+                    left_bracket -= e.count('}')
                     if ',' in e and left_bracket == 0:
                         param_count += 1
                 param_count += 1
