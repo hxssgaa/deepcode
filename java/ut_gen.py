@@ -140,9 +140,9 @@ def _build_random_double():
 
 
 def _build_mock_param_data(class_type, class_map):
-    generics = GENERICS_REGEX.match(class_type)
-    if generics:
-        generics = generics.group(1)
+    generics = ""
+    if '<' in class_type and '>' in class_type:
+        generics = class_type[class_type.index('<'): class_type.rindex('>') + 1]
     class_type = clear_generics(class_type)
     if class_type == 'String':
         return _build_random_string(8)
@@ -158,6 +158,14 @@ def _build_mock_param_data(class_type, class_map):
         return _build_random_float()
     elif class_type == 'Double':
         return _build_random_double()
+    elif class_type.startswith('java.util.List'):
+        return 'new java.util.ArrayList%s()' % generics
+    elif class_type.startswith('java.util.Map'):
+        return 'new java.util.HashMap%s()' % generics
+    elif class_type.startswith('java.util.Set'):
+        return 'new java.util.HashSet%s()' % generics
+    elif class_type.startswith('java.util.Date'):
+        return 'new java.util.Date()'
     else:
         return 'mock(%s.class)' % class_type
 
@@ -177,7 +185,7 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
     package_code = ['package %s;' % ut_package, '']
 
     # main code
-    main_code = ['@RunWith(PowerMockRunner.class)']
+    main_code = ['@SuppressWarnings("ALL")', '@RunWith(PowerMockRunner.class)']
     main_code += ['public class %s {' % ut_class_name]
 
     # dep info
@@ -243,7 +251,6 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
             else:
                 external_invoke_methods_map[k] = v
         method_signature += ' {'
-        main_code += ['\t@SuppressWarnings("unchecked")']
         main_code += [method_signature]
         param_index = 0
         param_type_map = {}
@@ -268,7 +275,6 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
         main_code += ['\t}']
         main_code += ['']
         for test_index in range(UT_TEST_COUNT):
-            main_code += ['\t@SuppressWarnings("unchecked")']
             main_code += ['\t@Test']
             main_code += ['\tpublic void test%s_%s%d() throws Exception {' % (
                 _get_capital_method_name(public_method.method_name),
@@ -277,6 +283,9 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
             main_code += ['%sList<Object> param = new ArrayList<Object>();' % tab]
             for k in sorted(param_type_map.keys()):
                 main_code += _build_mock_param_code(k, param_type_map[k], class_map)
+            main_code += ['%s/* <------------------------Fill param here------------------------> */' % tab]
+            main_code += [tab, tab]
+            main_code += ['%s/* <------------------------End Fill param------------------------> */' % tab]
             for k in sorted(param_type_map.keys()):
                 main_code += ['%sparam.add(param%d);' % (tab, k)]
             if public_method.ret_type == 'void':
@@ -289,6 +298,9 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
                     tab, public_method.ret_type, _get_capital_method_name(public_method.method_name),
                     '_'.join(public_method.params.keys())
                 )]
+            main_code += ['%s/* <------------------------Check result here------------------------> */' % tab]
+            main_code += [tab, tab]
+            main_code += ['%s/* <------------------------End check result------------------------> */' % tab]
             main_code += ['\t}']
             main_code += ['']
 
