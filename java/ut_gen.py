@@ -262,11 +262,12 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
                 ret_type = _get_object_type(method.ret_type)
                 main_code += ['%swhen(%s.%s(%s)).thenReturn((%s)%s);' % (tab, k, method.method_name, params_mock_any,
                                                                          ret_type, 'param[%d]' % param_index)]
-                param_type_map[param_index] = (ret_type, None)
+                param_type_map[param_index] = (ret_type, None, '%s.%s' % (k, method.method_name))
                 param_index += 1
 
         param_type_map.update({
-            param_index + i: (_get_object_type(e), k) for i, (k, e) in enumerate(public_method.params.items())
+            param_index + i: (_get_object_type(e), k, public_method.method_name)
+            for i, (k, e) in enumerate(public_method.params.items())
         })
         ret_params = ', '.join('(%s)param[%d]' % (param_type_map[k][0], k) for k in sorted(
             param_type_map.keys()[param_index:]))
@@ -287,7 +288,7 @@ def _build_ut_code(entity, class_map, ut_import_map, ut_class_name, public_metho
             main_code += [tab, tab]
             main_code += ['%s/* <------------------------End Fill param------------------------> */' % tab]
             for k in sorted(param_type_map.keys()):
-                main_code += ['%sparam.add(param%d);' % (tab, k)]
+                main_code += ['%sparam.add(param%d); /* %s */' % (tab, k, param_type_map[k][2])]
             if public_method.ret_type == 'void':
                 main_code += ['%stest%sBase_%s(param.toArray());' % (
                     tab, _get_capital_method_name(public_method.method_name),
