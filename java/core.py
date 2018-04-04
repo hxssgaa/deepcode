@@ -47,6 +47,10 @@ class JavaMethodEntity(object):
         self.method_body = method_body  # Body of this method
         self.annotations = annotations  # Method annotations
 
+    def __str__(self):
+        return '%s %s(%s)' % (self.ret_type, self.method_name, ','.join(map(lambda x: '%s %s' % (x[1], x[0]),
+                                                                            self.params.items())))
+
 
 class JavaClassEntity(object):
 
@@ -98,7 +102,7 @@ def _is_non_final_static_spring_field_line(line):
         return _is_non_final_static_spring_field_line('%s;' % line[:line.index('=')])
     # TODO：support static and final types.
     return (line.startswith('public') or line.startswith('private')) \
-           and 'static ' not in line and 'final ' not in line and ('(' or ')') not in line and line.endswith(';')
+           and 'final ' not in line and ('(' or ')') not in line and line.endswith(';')
 
 
 def _is_declare_type(s):
@@ -125,7 +129,7 @@ def _is_method_name(s):
 
 
 def clear_generics(s):
-    if not s or '<' not in s:
+    if not s or '<' not in s or '(' in s or ')' in s:
         return s
     left = 0
     res = []
@@ -267,19 +271,20 @@ def _clear_code_comment(lines):
     res = []
     doc_start_pos = (-1, -1)
     for i, e in enumerate(lines):
-        e = e.strip()
+        index = e[0]
+        e = e[1].strip()
         e = CODE_COMMENT_REGEX.sub('', e)
         if '/*' in e:
             doc_start_pos = (i, e.index('/*'))
-            res.append(''.join(e[:doc_start_pos[1]]))
+            res.append((index, ''.join(e[:doc_start_pos[1]])))
         if '*/' in e:
-            res.append(''.join(e[e.index('*/') + 2:]))
+            res.append((index, ''.join(e[e.index('*/') + 2:])))
             doc_start_pos = (-1, -1)
             continue
         if doc_start_pos != (-1, -1):
             continue
-        res.append(e)
-    res = map(lambda x: x[:x.index('//')] if '//' in x else x, res)
+        res.append((index, e))
+    res = map(lambda x: (x[0], x[1][:x[1].index('//')] if '//' in x[1] else x[1]), res)
     return res
 
 
@@ -289,7 +294,7 @@ def _format_code_lines_helper(lines):
         return res
     left_bracket = 0
     bracket_s = ''
-    for i, e in enumerate(lines):
+    for i, (ide, e) in enumerate(lines):
         e = e.strip()
         e_tmp = QUOTE_REGEX.sub(lambda x: x.group()
                                 .replace(';', QUOTE_SEMICOLON_PLACE_HOLDER)
@@ -305,7 +310,7 @@ def _format_code_lines_helper(lines):
                         .replace(QUOTE_LEFT_BRACKET_PLACE_HOLDER, '(')
                         .replace(QUOTE_RIGHT_BRACKET_PLACE_HOLDER, ')'), e_spt)
             e_spt = map(str.strip, e_spt)
-            res += e_spt
+            res += map(lambda x: (ide, x), e_spt)
             i += 1
             continue
         left_bracket += e_tmp.count('(')
@@ -314,19 +319,20 @@ def _format_code_lines_helper(lines):
             bracket_s += e
         elif left_bracket == 0:
             if bracket_s:
-                res.append(bracket_s.strip() + e)
+                res.append((ide, bracket_s.strip() + e))
                 bracket_s = ''
             else:
-                res.append(e)
-    lines = filter(lambda x: x.strip(), res)
+                res.append((ide, e))
+    lines = filter(lambda x: x[1].strip(), res)
     res = []
     index = 0
     while index < len(lines):
         line = lines[index]
         if index < len(lines) - 1:
             next_line = lines[index + 1]
-            if line.endswith('[') or line.endswith(',') or (next_line.startswith('.') and not line.endswith(';')):
-                res.append(line + next_line)
+            if line[1].endswith('[') or line[1].endswith(',') or (
+                    next_line[1].startswith('.') and not line[1].endswith(';')):
+                res.append((line[0], line[1] + next_line[1]))
                 index += 2
                 continue
         res.append(line)
@@ -341,6 +347,7 @@ def _format_code_lines(lines):
     :param lines: code lines
     :return: formatted code lines
     """
+    lines = [(i + 1, e) for i, e in enumerate(lines)]
     lines = _clear_code_comment(lines)
     lines = _format_code_lines_helper(lines)
     return lines
@@ -353,7 +360,7 @@ def _get_java_class_entity_methods(lines, class_package_map, package, class_name
     method = JavaMethodEntity(package=package, class_name=class_name)
     body = []
     left_bracket = 0
-    for line in lines:
+    for idl, line in lines:
         line = line.strip()
         parsed = _parse_method_line(line, class_package_map, package, class_type)
         l_tmp = _replace_quote_bracket(line)
@@ -373,7 +380,7 @@ def _get_java_class_entity_methods(lines, class_package_map, package, class_name
                 if s:
                     body.append(s)
         elif left_bracket > 0:
-            body.append(line)
+            body.append((idl, line))
         if left_bracket == 0 and method.method_name:
             method.method_body = {'raw': body}
             res.append(method)
@@ -392,14 +399,14 @@ def _get_java_class_entity(file_name, class_packages):
 
     index = 0
     # Find package name
-    for l in lines:
+    for _, l in lines:
         if _is_package_line(l):
             entity.package = l.replace('package', '').replace(';', '').strip()
             break
         index += 1
 
     class_package_map = {}
-    for l in lines[index:]:
+    for _, l in lines[index:]:
         if _is_import_line(l):
             l = l.replace('import', '').replace(';', '').strip()
             l_spt = l.split('.')
@@ -425,7 +432,7 @@ def _get_java_class_entity(file_name, class_packages):
     entity.class_package_map = class_package_map
 
     # Find class name, parent class name and its' implemented interfaces.
-    for l in lines[index:]:
+    for _, l in lines[index:]:
         if _is_class_line(l):
             # We just ignore the generics here, because it's useless now.
             t = clear_generics(l).replace('{', '').split()
@@ -459,7 +466,7 @@ def _get_java_class_entity(file_name, class_packages):
 
     # Find private and public non-static and non-final fields
     entity.fields = {}
-    for l in lines[index:]:
+    for _, l in lines[index:]:
         if _is_non_final_static_spring_field_line(l):
             t = l.strip().replace(';', '')
             eq = None
@@ -567,9 +574,21 @@ def get_proj_class_map(proj_dir):
     return res
 
 
-def _find_vars_and_methods(line, line_spt, entity):
-    if not line or not line_spt:
+def _find_vars_and_methods(line, line_index, entity):
+    if not line:
         return {}
+
+    raw_line = line
+    line = clear_generics(_clear_quotes(line)).replace('this.', '')
+    for e in '.+-*/,^!&|<>%':
+        line = e.join(map(str.strip, line.split(e)))
+    line_spt = filter(lambda x: x, re.split(METHOD_LINE_SPLIT_REGEX, line))
+    line_spt = [e + line_spt[i + 1] if e.startswith('.') and i < len(line_spt) - 1
+                else e for i, e in enumerate(line_spt)]
+    line_spt = filter(lambda x: not x.startswith('.'), line_spt)
+    if not line_spt:
+        return {}
+
     res = {}
     for spt in line_spt:
         line = line.replace(spt, '^^^', 1)
@@ -618,6 +637,16 @@ def _find_vars_and_methods(line, line_spt, entity):
                 if var_key in entity_method_keys:
                     res[line_spt[i]]['class_type'] = 'Self'
                     res[line_spt[i]]['self_method'] = {var_key}
+        if _is_declare_var(line_spt[i]) and line_spt[i] in res:
+            res[line_spt[i]]['line_info'] = [
+                {
+                    'line_spt': line_spt,
+                    'separated': separated,
+                    'raw_line': raw_line,
+                    'line_index': line_index,
+                    'var_index': i
+                }
+            ]
     return res
 
 
@@ -628,18 +657,15 @@ def _setup_entity_method_dep_by_method(entity, method):
     local_vars = {}
     external_vars = {}
     self_methods = set()
-    for line in raw_body:
-        line = clear_generics(_clear_quotes(line)).replace('this.', '')
-        for e in '.+-*/,^!&|<>%':
-            line = e.join(map(str.strip, line.split(e)))
-        line_spt = filter(lambda x: x, re.split(METHOD_LINE_SPLIT_REGEX, line))
-        line_spt = [e + line_spt[i + 1] if e.startswith('.') and i < len(line_spt) - 1
-                    else e for i, e in enumerate(line_spt)]
-        line_spt = filter(lambda x: not x.startswith('.'), line_spt)
-        # print(line, line_spt)
-        for k, v in _find_vars_and_methods(line, line_spt, entity).items():
+    for line_index, line in raw_body:
+        for k, v in _find_vars_and_methods(line, line_index, entity).items():
             var_class_type = v['class_type']
             var_invoke_methods = v['invoke_methods'] if 'invoke_methods' in v else None
+
+            if k in external_vars:
+                external_vars[k]['line_info'] += v['line_info']
+            elif k in local_vars:
+                local_vars[k]['line_info'] += v['line_info']
 
             if var_class_type == '?' and k in method.params:
                 var_class_type = method.params[k]
