@@ -101,7 +101,7 @@ def _is_non_final_static_spring_field_line(line):
     if '=' in line:
         return _is_non_final_static_spring_field_line('%s;' % line[:line.index('=')])
     # TODO：support static and final types.
-    return (line.startswith('public') or line.startswith('private')) \
+    return (line.startswith('public ') or line.startswith('private ')) \
            and 'final ' not in line and ('(' or ')') not in line and line.endswith(';')
 
 
