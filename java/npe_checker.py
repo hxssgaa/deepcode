@@ -71,7 +71,7 @@ def _is_line_null_processed(line_info):
             '!=null',
             'null!=',
             'isBlank(%s)' % var_name,
-            'usEmpty(%s)' % var_name]) and var_name in raw_line:
+            'isEmpty(%s)' % var_name]) and var_name in raw_line:
         return True
 
     return False
