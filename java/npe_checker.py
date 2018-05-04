@@ -151,7 +151,7 @@ def process_null_pointer(class_map, diff_map):
         return res
     for k, v in diff_map.items():
         java_pack_name = _get_java_package_name_from_path(k)
-        if not java_pack_name:
+        if not java_pack_name or java_pack_name not in class_map:
             continue
         entity = class_map[java_pack_name]
         null_pointer_map = _process_null_pointer_from_entity(entity, v)
